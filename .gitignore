@@ -121,3 +121,5 @@ dist
 
 
 *.yml
+sample-config/*
+.DS_Store

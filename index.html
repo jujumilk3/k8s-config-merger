@@ -6,16 +6,211 @@
           content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
     <script type="text/javascript" src="./lib/jquery-3.6.1.min.js"></script>
-    <link rel="stylesheet" href="">
+    <script type="text/javascript" src="./lib/js-yaml.min.js"></script>
+    <link rel="stylesheet" href="./css/reset.css">
     <title>k8s config merger</title>
+    <style>
+        /*
+         * Custom styles
+         */
+        body {
+            margin: 0 auto;
+            text-align: center;
+        }
+
+        h1 {
+            margin-top: 20px;
+            font-style: italic;
+            font-size: 60px;
+            font-weight: bolder;
+        }
+
+        .main-wrap {
+            border: 1px solid black;
+            width: 1180px;
+            height: 1000px;
+            margin: 0 auto;
+        }
+
+        .tool-wrap {
+            width: 1180px;
+            text-align: right;
+            margin: 0 auto;
+            margin-bottom: 5px;
+        }
+
+        .dropzone-wrap {
+            width: 49%;
+            /*border-right: 1px solid black;*/
+            display: inline-block;
+            height: 100%;
+            float: left;
+        }
+
+        .result-wrap {
+            float: right;
+            display: inline-block;
+            width: 51%;
+            height: 100%;
+        }
+
+        #result {
+            width: 100%;
+            height: 100%;
+            resize: none;
+        }
+
+        .dropzone-description {
+            margin-top: 420px;
+            font-size: 30px;
+        }
+
+        ol {
+            text-align: left;
+            display: inline-block;
+            margin-bottom: 30px;
+            font-size: 17px;
+        }
+
+    </style>
 </head>
 <body>
 <h1>K8S CONFIG MERGER</h1>
+<div class="description-wrap">
+    <div class="description">
+        <ol>
+            <li>1. This script works only your browser, so It saves nothing. Don't worry about leak of config.</li>
+            <li>2. You can read every revealed code at <a href="https://github.com/jujumilk3/k8s-config-merger" target="_blank">@Github Repository</a>.</li>
+        </ol>
+    </div>
+</div>
+
+<div class="tool-wrap">
+    <button id="button-reset">Reset</button>
+    <button id="button-copy">Copy</button>
+    <button id="button-download">Download</button>
+</div>
+<div class="main-wrap">
+    <div class="dropzone-wrap"
+         id="drop_zone"
+         ondrop="dropHandler(event);"
+         ondragover="dragOverHandler(event);">
+        <div class="dropzone-description">
+            <p>Drag and Drop<br>one or more files to here.</p>
+        </div>
+    </div>
+    <div class="result-wrap">
+        <textarea readonly name="" id="result"></textarea>
+    </div>
+</div>
 </body>
 <script>
+    let asJson = {};
+    let asYaml = '';
+
     $(document).ready(function () {
         console.log("ready");
     });
 
+
+    $('#button-copy').click(function () {
+        copyTextToClipboard(asYaml);
+    });
+
+    $('#button-reset').click(function () {
+        $('#result').text('');
+        asJson = {};
+        asYaml = '';
+    });
+
+    $('#button-download').click(function () {
+        download('config', asYaml);
+    });
+
+
+    function download(filename, text) {
+        let element = document.createElement('a');
+        element.setAttribute('href', 'data:application/plain;charset=utf-8,' + encodeURIComponent(text));
+        element.setAttribute('download', filename);
+
+        element.style.display = 'none';
+        document.body.appendChild(element);
+
+        element.click();
+
+        document.body.removeChild(element);
+    }
+
+    function copyTextToClipboard(text) {
+        if (!navigator.clipboard) {
+            fallbackCopyTextToClipboard(text);
+            return;
+        }
+        navigator.clipboard.writeText(text).then(function() {
+            console.log('Async: Copying to clipboard was successful!');
+        }, function(err) {
+            console.error('Async: Could not copy text: ', err);
+        });
+    }
+
+    function getJsonLength(json) {
+        return Object.keys(json).length;
+    }
+
+    function addEachElementsAtAsJson(json) {
+        const keys = Object.keys(json);
+        keys.forEach((key) => {
+            if (asJson[key]) {
+                if (Array.isArray(asJson[key])) {
+                    asJson[key] = asJson[key].concat(json[key]);
+                } else {
+                    asJson[key] = json[key];
+                }
+            } else {
+                asJson[key] = json[key];
+            }
+        });
+    }
+
+
+    function dragOverHandler(ev) {
+        ev.preventDefault();
+    }
+
+    function dropHandler(ev) {
+        // console.log('File(s) dropped');
+
+        // Prevent default behavior (Prevent file from being opened)
+        ev.preventDefault();
+
+        if (ev.dataTransfer.items) {
+            // Use DataTransferItemList interface to access the file(s)
+            [...ev.dataTransfer.items].forEach((item, i) => {
+                // If dropped items aren't files, reject them
+                if (item.kind === 'file') {
+                    const file = item.getAsFile();
+                    console.log(`… file[${i}].name = ${file.name}`);
+                    file.text().then((text) => {
+                        let asJsonLength = getJsonLength(asJson);
+                        let jsonedYaml = jsyaml.load(text);
+                        if (asJsonLength === 0) {
+                            asJson = jsonedYaml;
+                        } else {
+                            addEachElementsAtAsJson(jsonedYaml);
+                        }
+                        asYaml = jsyaml.dump(asJson);
+                        // console.log(asJson);
+                        // console.log(asYaml);
+                        $("#result").text(asYaml);
+                    });
+                }
+            });
+        } else {
+            // Use DataTransfer interface to access the file(s)
+            [...ev.dataTransfer.files].forEach((file, i) => {
+                console.log(`… file[${i}].name = ${file.name}`);
+            });
+        }
+    }
 </script>
 </html>
