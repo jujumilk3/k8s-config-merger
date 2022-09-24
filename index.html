@@ -95,6 +95,7 @@
 </div>
 
 <div class="tool-wrap">
+    <button id="button-check">Check</button>
     <button id="button-reset">Reset</button>
     <button id="button-copy">Copy</button>
     <button id="button-download">Download</button>
@@ -119,6 +120,11 @@
 
     $(document).ready(function () {
         console.log("ready");
+    });
+
+    $('#button-check').click(function () {
+        console.log(asJson);
+        console.log(asYaml);
     });
 
 
@@ -171,7 +177,18 @@
         keys.forEach((key) => {
             if (asJson[key]) {
                 if (Array.isArray(asJson[key])) {
-                    asJson[key] = asJson[key].concat(json[key]);
+                    let currentKeyNames = []
+                    asJson[key].forEach((element) => {
+                        currentKeyNames.push(element["name"]);
+                    });
+                    let collected_names = [];
+                    json[key].forEach((element) => {
+                        collected_names.push(element["name"]);
+                        if (currentKeyNames.includes(element["name"])) {
+                        } else {
+                            asJson[key].push(element);
+                        }
+                    });
                 } else {
                     asJson[key] = json[key];
                 }
@@ -211,6 +228,8 @@
                         // console.log(asJson);
                         // console.log(asYaml);
                         $("#result").text(asYaml);
+                        // console.log(asYaml)
+                        // console.log(jsyaml.load(asYaml))
                     });
                 }
             });
